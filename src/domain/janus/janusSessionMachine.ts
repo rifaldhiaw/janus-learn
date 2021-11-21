@@ -1,5 +1,6 @@
 import { Janus } from "janus-gateway";
-import { assign, ContextFrom, createMachine, EventFrom, send } from "xstate";
+import { atomWithMachine } from "jotai/xstate";
+import { assign, createMachine } from "xstate";
 
 export type JanusSessionContext = {
   server: string;
@@ -87,4 +88,6 @@ const janusSessionMachine = createMachine<
   },
 });
 
-export { janusSessionMachine };
+const janusSessionAtom = atomWithMachine(() => janusSessionMachine);
+
+export { janusSessionAtom };

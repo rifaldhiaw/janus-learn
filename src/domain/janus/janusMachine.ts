@@ -1,4 +1,5 @@
 import { Janus } from "janus-gateway";
+import { atomWithMachine } from "jotai/xstate";
 import { createMachine } from "xstate";
 
 export type JanusContext = {};
@@ -41,4 +42,6 @@ const janusMachine = createMachine<JanusContext, JanusEvent>({
   },
 });
 
-export { janusMachine };
+const janusAtom = atomWithMachine(() => janusMachine);
+
+export { janusAtom };

@@ -1,27 +1,33 @@
 import type { NextPage } from "next";
 import React, { useEffect, useState } from "react";
-import { Box, Button, Flex, HStack, Input, Text } from "@chakra-ui/react";
-import { useMachine } from "@xstate/react";
-import { janusMachine, JanusState } from "../src/domain/janus/janusMachine";
+import { Box, Button, Flex, Text } from "@chakra-ui/react";
+import { janusAtom } from "../src/domain/janus/janusMachine";
 import {
+  janusSessionAtom,
   JanusSessionContext,
-  janusSessionMachine,
   JanusSessionState,
 } from "../src/domain/janus/janusSessionMachine";
 import {
+  janusPluginAtom,
   JanusPluginContext,
-  janusPluginMachine,
 } from "../src/domain/janus/janusPluginMachine";
 import { Janus } from "janus-gateway";
+import { useAtom } from "jotai";
+import ChatRoom from "../src/ui/textRoom/ChatRoom";
+import InputField from "../src/components/InputField";
 
 const myRoom = 1234;
 
 const Home: NextPage = () => {
-  const [_janusState, janusSend] = useMachine(janusMachine);
-  const [janusSessionState, janusSessionSend] = useMachine(janusSessionMachine);
-  const [janusPluginState, janusPluginSend] = useMachine(janusPluginMachine);
+  const [janusState, janusSend] = useAtom(janusAtom);
+  const [janusSessionState, janusSessionSend] = useAtom(janusSessionAtom);
+  const [janusPluginState, janusPluginSend] = useAtom(janusPluginAtom);
 
   const [hasJoin, setHasJoin] = useState(false);
+
+  useEffect(() => {
+    console.log(janusState.value);
+  }, [janusState.value]);
 
   // Init janus
   useEffect(() => {
@@ -84,20 +90,6 @@ const Home: NextPage = () => {
     }
   };
 
-  const handleSendMsg = (msg: string) => {
-    if (msg != "" && pluginHandle) {
-      const message = {
-        textroom: "message",
-        transaction: Janus.randomString(12),
-        room: myRoom,
-        text: msg,
-      };
-      pluginHandle.data({
-        text: JSON.stringify(message),
-      });
-    }
-  };
-
   const renderContent = () => {
     switch (janusSessionState.value as JanusSessionState) {
       case "idle":
@@ -111,12 +103,9 @@ const Home: NextPage = () => {
 
       case "ready":
         return hasJoin ? (
-          <ChatRoom
-            chats={janusPluginState.context.chats}
-            onSend={handleSendMsg}
-          />
+          <ChatRoom />
         ) : (
-          <InputField onEnter={hanldeRegister} placeholder="Username" />
+          <InputField inSubmit={hanldeRegister} placeholder="Username" />
         );
 
       case "error":
@@ -134,45 +123,4 @@ const Home: NextPage = () => {
   );
 };
 
-function ChatRoom(props: {
-  onSend: (v: string) => void;
-  chats: Array<string>;
-}) {
-  return (
-    <Box>
-      <Box h="200px">
-        {props.chats.map((v, i) => (
-          <Text key={i}>{v}</Text>
-        ))}
-      </Box>
-      <InputField onEnter={props.onSend} placeholder="Write Message" />
-    </Box>
-  );
-}
-
-function InputField(props: {
-  placeholder: string;
-  onEnter: (v: string) => void;
-}) {
-  const [value, setValue] = useState("");
-  return (
-    <HStack>
-      <Input
-        placeholder={props.placeholder}
-        flex={1}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-      />
-      <Button
-        onClick={() => {
-          props.onEnter(value);
-          setValue("");
-        }}
-        colorScheme="blue"
-      >
-        Enter
-      </Button>
-    </HStack>
-  );
-}
 export default Home;

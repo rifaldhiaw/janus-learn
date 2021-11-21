@@ -1,5 +1,6 @@
 import { Janus, JSEP, PluginHandle } from "janus-gateway";
 import { assign, createMachine } from "xstate";
+import { atomWithMachine } from "jotai/xstate";
 
 export type JanusPluginContext = {
   data: Array<any>;
@@ -155,4 +156,6 @@ const janusPluginMachine = createMachine<JanusPluginContext, JanusPluginEvent>({
   },
 });
 
-export { janusPluginMachine };
+const janusPluginAtom = atomWithMachine(() => janusPluginMachine);
+
+export { janusPluginAtom };
