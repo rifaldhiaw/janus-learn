@@ -15,8 +15,7 @@ import { Janus } from "janus-gateway";
 import { useAtom } from "jotai";
 import ChatRoom from "../src/ui/textRoom/ChatRoom";
 import InputField from "../src/components/InputField";
-
-const myRoom = 1234;
+import { room } from "../src/config";
 
 const Home: NextPage = () => {
   const [janusState, janusSend] = useAtom(janusAtom);
@@ -77,7 +76,7 @@ const Home: NextPage = () => {
     var register = {
       textroom: "join",
       transaction: transaction,
-      room: myRoom,
+      room: room,
       username: Janus.randomString(12),
       display: name,
     };
