@@ -1,5 +1,5 @@
 import { Janus, JSEP, PluginHandle } from "janus-gateway";
-import { assign, createMachine } from "xstate";
+import { assign, createMachine, Sender } from "xstate";
 import { atomWithMachine } from "jotai/xstate";
 
 export type JanusPluginContext = {
@@ -12,16 +12,19 @@ export type JanusPluginContext = {
 };
 
 export type JanusPluginEvent =
+  | { type: "INIT"; janus: Janus }
+  | { type: "ATTACH_TEXTROOM_PLUGIN" }
   | { type: "ATTACH_SUCCEED"; pluginHandle: PluginHandle }
   | { type: "ATTACH_FAILED" }
   | { type: "OFFER_RECEIVED"; jsep: JSEP }
   | { type: "DATA_CHANNEL_OPENED" }
   | { type: "DATA_RECEIVED"; data: any };
 
-export type JanusPluginBaseState = "idle" | "running";
-
 export type JanusPluginState =
   | "idle"
+  | "ready"
+  | "runningTextRoomPlugin"
+  | "attaching"
   | "attchPluginFailed"
   | "readyForSetup"
   | "setupFailed"
@@ -69,6 +72,39 @@ const sendAnswerReq = (c: JanusPluginContext, _e: JanusPluginEvent) => {
   });
 };
 
+const initTextRoom =
+  (c: JanusPluginContext, _e: JanusPluginEvent) =>
+  (callback: Sender<JanusPluginEvent>) => {
+    c.janus?.attach({
+      plugin: "janus.plugin.textroom",
+      success: (pluginHandle) => {
+        callback({
+          type: "ATTACH_SUCCEED",
+          pluginHandle: pluginHandle,
+        });
+      },
+      error: () => {
+        callback({ type: "ATTACH_FAILED" });
+      },
+      onmessage: (_msg, jsep) => {
+        if (jsep) {
+          callback({ type: "OFFER_RECEIVED", jsep: jsep });
+        }
+      },
+      ondataopen: () => {
+        callback({ type: "DATA_CHANNEL_OPENED" });
+      },
+      ondata: (data) => {
+        var json = JSON.parse(data);
+        console.log(json);
+        callback({
+          type: "DATA_RECEIVED",
+          data: json,
+        });
+      },
+    });
+  };
+
 const janusPluginMachine = createMachine<JanusPluginContext, JanusPluginEvent>({
   key: "janus",
   initial: "idle",
@@ -83,73 +119,101 @@ const janusPluginMachine = createMachine<JanusPluginContext, JanusPluginEvent>({
   states: {
     idle: {
       on: {
-        ATTACH_SUCCEED: {
-          target: "readyForSetup",
+        INIT: {
+          target: "ready",
           actions: assign((_c, e) => ({
-            pluginHandle: e.pluginHandle,
+            janus: e.janus,
           })),
-        },
-        ATTACH_FAILED: {
-          target: "attchPluginFailed",
         },
       },
     },
 
-    attchPluginFailed: {},
-    readyForSetup: {
+    ready: {
+      on: {
+        ATTACH_TEXTROOM_PLUGIN: {
+          target: "runningTextRoomPlugin",
+        },
+      },
+    },
+
+    runningTextRoomPlugin: {
       invoke: {
-        src: setupReq,
-        onDone: {
-          target: "waitingOffer",
-        },
-        onError: {
-          target: "setupFailed",
-        },
+        src: initTextRoom,
       },
-    },
 
-    setupFailed: {},
-    waitingOffer: {
-      on: {
-        OFFER_RECEIVED: {
-          target: "sendingAnswer",
-          actions: assign((_c, e) => ({
-            jsep: e.jsep,
-          })),
+      initial: "attaching",
+      states: {
+        attaching: {
+          on: {
+            ATTACH_SUCCEED: {
+              target: "readyForSetup",
+              actions: assign((_c, e) => ({
+                pluginHandle: e.pluginHandle,
+              })),
+            },
+            ATTACH_FAILED: {
+              target: "attchPluginFailed",
+            },
+          },
         },
-      },
-    },
 
-    sendingAnswer: {
-      invoke: {
-        src: sendAnswerReq,
-        onDone: {
-          target: "channelReady",
+        attchPluginFailed: {},
+        readyForSetup: {
+          invoke: {
+            src: setupReq,
+            onDone: {
+              target: "waitingOffer",
+            },
+            onError: {
+              target: "setupFailed",
+            },
+          },
         },
-        onError: {
-          target: "channelError",
-        },
-      },
-    },
 
-    channelError: {},
-    channelReady: {
-      on: {
-        DATA_CHANNEL_OPENED: {
-          target: "receivingData",
+        setupFailed: {},
+        waitingOffer: {
+          on: {
+            OFFER_RECEIVED: {
+              target: "sendingAnswer",
+              actions: assign((_c, e) => ({
+                jsep: e.jsep,
+              })),
+            },
+          },
         },
-      },
-    },
 
-    receivingData: {
-      on: {
-        DATA_RECEIVED: {
-          actions: assign((c, e) => ({
-            chats:
-              e.data.textroom == "message"
-                ? [...c.chats, e.data.text]
-                : c.chats,
-          })),
+        sendingAnswer: {
+          invoke: {
+            src: sendAnswerReq,
+            onDone: {
+              target: "channelReady",
+            },
+            onError: {
+              target: "channelError",
+            },
+          },
+        },
+
+        channelError: {},
+        channelReady: {
+          on: {
+            DATA_CHANNEL_OPENED: {
+              target: "receivingData",
+            },
+          },
+        },
+
+        receivingData: {
+          on: {
+            DATA_RECEIVED: {
+              actions: assign((c, e) => ({
+                chats:
+                  e.data.textroom == "message"
+                    ? [...c.chats, e.data.text]
+                    : c.chats,
+              })),
+            },
+          },
         },
       },
     },

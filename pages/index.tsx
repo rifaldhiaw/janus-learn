@@ -4,7 +4,6 @@ import { Box, Button, Flex, Text } from "@chakra-ui/react";
 import { janusAtom } from "../src/domain/janus/janusMachine";
 import {
   janusSessionAtom,
-  JanusSessionContext,
   JanusSessionState,
 } from "../src/domain/janus/janusSessionMachine";
 import {
@@ -18,59 +17,42 @@ import InputField from "../src/components/InputField";
 import { room } from "../src/config";
 
 const Home: NextPage = () => {
-  const [janusState, janusSend] = useAtom(janusAtom);
+  const [_janusState, janusSend] = useAtom(janusAtom);
   const [janusSessionState, janusSessionSend] = useAtom(janusSessionAtom);
   const [janusPluginState, janusPluginSend] = useAtom(janusPluginAtom);
 
   const [hasJoin, setHasJoin] = useState(false);
 
-  useEffect(() => {
-    console.log(janusState.value);
-  }, [janusState.value]);
+  // useEffect(() => {
+  //   console.log(janusPluginState.value);
+  // }, [janusPluginState.value]);
 
   // Init janus
   useEffect(() => {
     janusSend({ type: "INIT" });
   }, [janusSend]);
 
-  // Register text plugin
-  const { janus } = janusSessionState.context as JanusSessionContext;
+  // Init plugin machine
   useEffect(() => {
-    if (janusSessionState.value === "ready" && janus) {
-      janus.attach({
-        plugin: "janus.plugin.textroom",
-        success: (pluginHandle) => {
-          janusPluginSend({
-            type: "ATTACH_SUCCEED",
-            pluginHandle: pluginHandle,
-          });
-        },
-        error: () => {
-          janusPluginSend({ type: "ATTACH_FAILED" });
-        },
-        onmessage: (_msg, jsep) => {
-          if (jsep) {
-            janusPluginSend({ type: "OFFER_RECEIVED", jsep: jsep });
-          }
-        },
-        ondataopen: () => {
-          janusPluginSend({ type: "DATA_CHANNEL_OPENED" });
-        },
-        ondata: (data) => {
-          var json = JSON.parse(data);
-          console.log(json);
-          janusPluginSend({
-            type: "DATA_RECEIVED",
-            data: json,
-          });
-        },
+    if (janusSessionState.matches("ready") && janusSessionState.context.janus) {
+      janusPluginSend({
+        type: "INIT",
+        janus: janusSessionState.context.janus,
       });
     }
-  }, [janusSessionState.value, janusPluginSend, janus]);
+  }, [janusSessionState, janusPluginSend]);
+
+  // Register text room plugin
+  useEffect(() => {
+    if (janusPluginState.matches("ready")) {
+      janusPluginSend({
+        type: "ATTACH_TEXTROOM_PLUGIN",
+      });
+    }
+  }, [janusPluginState, janusPluginSend]);
 
   // Register user
   const { pluginHandle } = janusPluginState.context as JanusPluginContext;
-
   const hanldeRegister = (name: string) => {
     var transaction = Janus.randomString(12);
     var register = {
@@ -81,7 +63,10 @@ const Home: NextPage = () => {
       display: name,
     };
 
-    if (janusPluginState.value === "receivingData" && pluginHandle) {
+    if (
+      janusPluginState.matches("runningTextRoomPlugin.receivingData") &&
+      pluginHandle
+    ) {
       pluginHandle.data({
         text: JSON.stringify(register),
       });
