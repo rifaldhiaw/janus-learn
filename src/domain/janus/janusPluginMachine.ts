@@ -31,7 +31,7 @@ export type JanusPluginState =
   | "channelError"
   | "receivingData";
 
-const setupReq = (c: JanusPluginContext, e: JanusPluginEvent) => {
+const setupReq = (c: JanusPluginContext, _e: JanusPluginEvent) => {
   return new Promise((res, rej) => {
     if (c.pluginHandle) {
       const body = { request: "setup" };
@@ -44,7 +44,7 @@ const setupReq = (c: JanusPluginContext, e: JanusPluginEvent) => {
   });
 };
 
-const sendAnswerReq = (c: JanusPluginContext, e: JanusPluginEvent) => {
+const sendAnswerReq = (c: JanusPluginContext, _e: JanusPluginEvent) => {
   return new Promise<void>((res, rej) => {
     if (c.pluginHandle && c.jsep) {
       c.pluginHandle.createAnswer({
@@ -85,7 +85,7 @@ const janusPluginMachine = createMachine<JanusPluginContext, JanusPluginEvent>({
       on: {
         ATTACH_SUCCEED: {
           target: "readyForSetup",
-          actions: assign((c, e) => ({
+          actions: assign((_c, e) => ({
             pluginHandle: e.pluginHandle,
           })),
         },
@@ -113,7 +113,7 @@ const janusPluginMachine = createMachine<JanusPluginContext, JanusPluginEvent>({
       on: {
         OFFER_RECEIVED: {
           target: "sendingAnswer",
-          actions: assign((c, e) => ({
+          actions: assign((_c, e) => ({
             jsep: e.jsep,
           })),
         },

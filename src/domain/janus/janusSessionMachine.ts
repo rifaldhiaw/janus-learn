@@ -44,7 +44,7 @@ const janusSessionMachine = createMachine<
     },
     creating: {
       invoke: {
-        src: (c, e) => (callback, _onReceive) => {
+        src: (c, _e) => (callback, _onReceive) => {
           const janus: Janus = new Janus({
             server: c.server,
             success: () => callback({ type: "SUCCEED", janus: janus }),
