@@ -5,7 +5,6 @@ import { room } from "../../config";
 
 export type JanusTextRoomContext = {
   janus: Janus | undefined;
-  pluginType: string | undefined;
   textRoom: PluginHandle | undefined;
   jsep: JSEP | undefined;
 };
@@ -152,7 +151,6 @@ const janusTextRoomMachine = createMachine<
   initial: "idle",
   context: {
     janus: undefined,
-    pluginType: undefined,
     textRoom: undefined,
     jsep: undefined,
   },
