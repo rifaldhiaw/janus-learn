@@ -9,17 +9,10 @@ const Home: NextPage = () => {
     router.push("/text-room");
   };
 
-  const handleTextRoomNewPressed = () => {
-    router.push("/text-room-new");
-  };
-
   return (
     <Flex height="100vh" justify="center" align="center">
       <Button onClick={handleTextRoomPressed} colorScheme="blue">
         Text Room
-      </Button>
-      <Button onClick={handleTextRoomNewPressed} colorScheme="blue">
-        Text Room New Ins
       </Button>
     </Flex>
   );

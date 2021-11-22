@@ -11,7 +11,7 @@ export type JanusTextRoomContext = {
 };
 
 export type JanusTextRoomEvent =
-  | { type: "ATTACH_TEXTROOM_PLUGIN"; janus: Janus }
+  | { type: "ATTACH_PLUGIN"; janus: Janus }
   | { type: "ATTACH_SUCCEED"; pluginHandle: PluginHandle }
   | { type: "ATTACH_FAILED" }
   | { type: "OFFER_RECEIVED"; jsep: JSEP }
@@ -159,7 +159,7 @@ const janusTextRoomMachine = createMachine<
   states: {
     idle: {
       on: {
-        ATTACH_TEXTROOM_PLUGIN: {
+        ATTACH_PLUGIN: {
           target: "runningTextRoomPlugin",
           actions: assign((_c, e) => ({
             janus: e.janus,

@@ -22,7 +22,7 @@ const TextRoom: NextPage = () => {
   useEffect(() => {
     if (janusSessionState.matches("ready") && janusSessionState.context.janus) {
       textRoomSend({
-        type: "ATTACH_TEXTROOM_PLUGIN",
+        type: "ATTACH_PLUGIN",
         janus: janusSessionState.context.janus,
       });
     }
