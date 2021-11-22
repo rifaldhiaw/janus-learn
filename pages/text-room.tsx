@@ -28,7 +28,7 @@ const TextRoom: NextPage = () => {
     }
   }, [janusSessionState, textRoomSend]);
 
-  const hanldeRegister = (name: string) => {
+  const handleRegister = (name: string) => {
     if (textRoomState.matches("runningTextRoomPlugin.receivingData")) {
       joinTextRoom(name);
     }
@@ -43,7 +43,7 @@ const TextRoom: NextPage = () => {
         return <Text>creating</Text>;
 
       case "ready":
-        return <InputField inSubmit={hanldeRegister} placeholder="Username" />;
+        return <InputField inSubmit={handleRegister} placeholder="Username" />;
 
       case "error":
         return <Text>error</Text>;
