@@ -14,7 +14,6 @@
     "@xstate/react": "^1.6.2",
     "framer-motion": "^4",
     "janus-gateway": "git://github.com/meetecho/janus-gateway.git",
-    "jotai": "^1.4.4",
     "next": "12.0.4",
     "react": "17.0.2",
     "react-dom": "17.0.2",

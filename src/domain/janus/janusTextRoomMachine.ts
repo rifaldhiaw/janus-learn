@@ -1,28 +1,25 @@
 import { Janus, JSEP, PluginHandle } from "janus-gateway";
 import { assign, createMachine, Sender } from "xstate";
-import { atomWithMachine } from "jotai/xstate";
+import create from "zustand";
+import { room } from "../../config";
 
-export type JanusPluginContext = {
-  data: Array<any>;
-  chats: Array<string>;
+export type JanusTextRoomContext = {
   janus: Janus | undefined;
   pluginType: string | undefined;
-  pluginHandle: PluginHandle | undefined;
+  textRoom: PluginHandle | undefined;
   jsep: JSEP | undefined;
 };
 
-export type JanusPluginEvent =
-  | { type: "INIT"; janus: Janus }
-  | { type: "ATTACH_TEXTROOM_PLUGIN" }
+export type JanusTextRoomEvent =
+  | { type: "ATTACH_TEXTROOM_PLUGIN"; janus: Janus }
   | { type: "ATTACH_SUCCEED"; pluginHandle: PluginHandle }
   | { type: "ATTACH_FAILED" }
   | { type: "OFFER_RECEIVED"; jsep: JSEP }
   | { type: "DATA_CHANNEL_OPENED" }
   | { type: "DATA_RECEIVED"; data: any };
 
-export type JanusPluginState =
+export type JanusTextRoomState =
   | "idle"
-  | "ready"
   | "runningTextRoomPlugin"
   | "attaching"
   | "attchPluginFailed"
@@ -34,11 +31,52 @@ export type JanusPluginState =
   | "channelError"
   | "receivingData";
 
-const setupReq = (c: JanusPluginContext, _e: JanusPluginEvent) => {
+type TextRoomStore = {
+  chat: Array<string>;
+  textRoom: PluginHandle | undefined;
+  hasJoin: boolean;
+  sendMsg: (message: string) => void;
+  joinRoom: (userName: string) => void;
+};
+
+const useTextRoomStore = create<TextRoomStore>((set, get) => ({
+  chat: [],
+  textRoom: undefined,
+  hasJoin: false,
+  sendMsg: (msg) => {
+    const textRoom = get().textRoom;
+    const message = {
+      textroom: "message",
+      transaction: Janus.randomString(12),
+      room: room,
+      text: msg,
+    };
+    textRoom?.data({
+      text: JSON.stringify(message),
+    });
+  },
+  joinRoom: (userName) => {
+    const textRoom = get().textRoom;
+    var transaction = Janus.randomString(12);
+    var register = {
+      textroom: "join",
+      transaction: transaction,
+      room: room,
+      username: Janus.randomString(12),
+      display: userName,
+    };
+    textRoom?.data({
+      text: JSON.stringify(register),
+    });
+    set({ hasJoin: true });
+  },
+}));
+
+const setupReq = (c: JanusTextRoomContext, _e: JanusTextRoomEvent) => {
   return new Promise((res, rej) => {
-    if (c.pluginHandle) {
+    if (c.textRoom) {
       const body = { request: "setup" };
-      c.pluginHandle.send({
+      c.textRoom.send({
         message: body,
         success: res,
         error: rej,
@@ -47,16 +85,16 @@ const setupReq = (c: JanusPluginContext, _e: JanusPluginEvent) => {
   });
 };
 
-const sendAnswerReq = (c: JanusPluginContext, _e: JanusPluginEvent) => {
+const sendAnswerReq = (c: JanusTextRoomContext, _e: JanusTextRoomEvent) => {
   return new Promise<void>((res, rej) => {
-    if (c.pluginHandle && c.jsep) {
-      c.pluginHandle.createAnswer({
+    if (c.textRoom && c.jsep) {
+      c.textRoom.createAnswer({
         jsep: c.jsep,
         media: { audio: false, video: false, data: true }, // We only use datachannels
         success: (jsep: JSEP) => {
-          if (c.pluginHandle && jsep) {
+          if (c.textRoom && jsep) {
             const body = { request: "ack" };
-            c.pluginHandle.send({
+            c.textRoom.send({
               message: body,
               jsep: jsep,
               success: res,
@@ -73,8 +111,8 @@ const sendAnswerReq = (c: JanusPluginContext, _e: JanusPluginEvent) => {
 };
 
 const initTextRoom =
-  (c: JanusPluginContext, _e: JanusPluginEvent) =>
-  (callback: Sender<JanusPluginEvent>) => {
+  (c: JanusTextRoomContext, _e: JanusTextRoomEvent) =>
+  (callback: Sender<JanusTextRoomEvent>) => {
     c.janus?.attach({
       plugin: "janus.plugin.textroom",
       success: (pluginHandle) => {
@@ -105,33 +143,27 @@ const initTextRoom =
     });
   };
 
-const janusPluginMachine = createMachine<JanusPluginContext, JanusPluginEvent>({
-  key: "janus",
+const janusTextRoomMachine = createMachine<
+  JanusTextRoomContext,
+  JanusTextRoomEvent
+>({
+  key: "janusTextRoom",
+  id: "janusTextRoom",
   initial: "idle",
   context: {
-    data: [],
-    chats: [],
     janus: undefined,
     pluginType: undefined,
-    pluginHandle: undefined,
+    textRoom: undefined,
     jsep: undefined,
   },
   states: {
     idle: {
       on: {
-        INIT: {
-          target: "ready",
+        ATTACH_TEXTROOM_PLUGIN: {
+          target: "runningTextRoomPlugin",
           actions: assign((_c, e) => ({
             janus: e.janus,
           })),
-        },
-      },
-    },
-
-    ready: {
-      on: {
-        ATTACH_TEXTROOM_PLUGIN: {
-          target: "runningTextRoomPlugin",
         },
       },
     },
@@ -147,9 +179,14 @@ const janusPluginMachine = createMachine<JanusPluginContext, JanusPluginEvent>({
           on: {
             ATTACH_SUCCEED: {
               target: "readyForSetup",
-              actions: assign((_c, e) => ({
-                pluginHandle: e.pluginHandle,
-              })),
+              actions: [
+                assign((_c, e) => ({
+                  textRoom: e.pluginHandle,
+                })),
+                (_c, e) => {
+                  useTextRoomStore.setState({ textRoom: e.pluginHandle });
+                },
+              ],
             },
             ATTACH_FAILED: {
               target: "attchPluginFailed",
@@ -206,12 +243,13 @@ const janusPluginMachine = createMachine<JanusPluginContext, JanusPluginEvent>({
         receivingData: {
           on: {
             DATA_RECEIVED: {
-              actions: assign((c, e) => ({
-                chats:
-                  e.data.textroom == "message"
-                    ? [...c.chats, e.data.text]
-                    : c.chats,
-              })),
+              actions: (_c, e) => {
+                if (e.data.textroom == "message") {
+                  const curChat = useTextRoomStore.getState().chat;
+                  const newChat = [...curChat, e.data.text];
+                  useTextRoomStore.setState({ chat: newChat });
+                }
+              },
             },
           },
         },
@@ -220,6 +258,4 @@ const janusPluginMachine = createMachine<JanusPluginContext, JanusPluginEvent>({
   },
 });
 
-const janusPluginAtom = atomWithMachine(() => janusPluginMachine);
-
-export { janusPluginAtom };
+export { janusTextRoomMachine, useTextRoomStore };

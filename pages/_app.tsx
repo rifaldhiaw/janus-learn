@@ -2,15 +2,15 @@ import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import React from "react";
 import { ChakraProvider } from "@chakra-ui/react";
-import { Provider } from "jotai";
+import { JanusProvider } from "../src/domain/janus/janusProvider";
 
 function MyApp({ Component, pageProps }: AppProps) {
   return (
-    <Provider>
+    <JanusProvider>
       <ChakraProvider>
         <Component {...pageProps} />
       </ChakraProvider>
-    </Provider>
+    </JanusProvider>
   );
 }
 

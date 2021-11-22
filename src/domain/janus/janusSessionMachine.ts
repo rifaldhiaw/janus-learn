@@ -1,5 +1,4 @@
 import { Janus } from "janus-gateway";
-import { atomWithMachine } from "jotai/xstate";
 import { assign, createMachine } from "xstate";
 
 export type JanusSessionContext = {
@@ -26,6 +25,7 @@ const janusSessionMachine = createMachine<
   JanusSessionEvent
 >({
   key: "janusSession",
+  id: "janusSession",
   initial: "idle",
   context: {
     server: "wss://janus.conf.meetecho.com/ws",
@@ -88,6 +88,4 @@ const janusSessionMachine = createMachine<
   },
 });
 
-const janusSessionAtom = atomWithMachine(() => janusSessionMachine);
-
-export { janusSessionAtom };
+export { janusSessionMachine };
