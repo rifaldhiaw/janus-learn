@@ -1,6 +1,7 @@
 import type { NextPage } from "next";
-import { Button, Flex } from "@chakra-ui/react";
+import { Button, Stack } from "@chakra-ui/react";
 import { useRouter } from "next/router";
+import React from "react";
 
 const Home: NextPage = () => {
   const router = useRouter();
@@ -9,12 +10,19 @@ const Home: NextPage = () => {
     router.push("/text-room");
   };
 
+  const handleVideoRoomPressed = () => {
+    router.push("/video-room");
+  };
+
   return (
-    <Flex height="100vh" justify="center" align="center">
+    <Stack height="100vh" justify="center" align="center">
       <Button onClick={handleTextRoomPressed} colorScheme="blue">
         Text Room
       </Button>
-    </Flex>
+      <Button onClick={handleVideoRoomPressed} colorScheme="blue">
+        Video Room
+      </Button>
+    </Stack>
   );
 };
 

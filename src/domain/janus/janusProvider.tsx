@@ -14,6 +14,11 @@ import {
   janusTextRoomMachine,
 } from "./janusTextRoomMachine";
 import { Interpreter } from "xstate";
+import {
+  JanusVideoRoomContext,
+  JanusVideoRoomEvent,
+  janusVideoRoomMachine,
+} from "./janusVideoRoomMachine";
 
 type JanusService = Interpreter<
   JanusContext,
@@ -45,10 +50,21 @@ type JanusTextRoomService = Interpreter<
   }
 >;
 
+type JanusVideoRoomService = Interpreter<
+  JanusVideoRoomContext,
+  any,
+  JanusVideoRoomEvent,
+  {
+    value: any;
+    context: JanusVideoRoomContext;
+  }
+>;
+
 type JanusServiceStore = {
   janusService: JanusService;
   janusSessionService: JanusSessionService;
   janusTextRoomService: JanusTextRoomService;
+  janusVideoRoomService: JanusVideoRoomService;
 };
 
 const { Provider, useStore } = createContext<JanusServiceStore>();
@@ -57,6 +73,7 @@ function JanusProvider(props: { children: ReactNode }) {
   const janusService = useInterpret(janusMachine);
   const janusSessionService = useInterpret(janusSessionMachine);
   const janusTextRoomService = useInterpret(janusTextRoomMachine);
+  const janusVideoRoomService = useInterpret(janusVideoRoomMachine);
 
   return (
     <Provider
@@ -65,6 +82,7 @@ function JanusProvider(props: { children: ReactNode }) {
           janusService: janusService,
           janusSessionService: janusSessionService,
           janusTextRoomService: janusTextRoomService,
+          janusVideoRoomService: janusVideoRoomService,
         }))
       }
     >
@@ -88,10 +106,16 @@ function useJanusTextRoomService() {
   return useActor(s);
 }
 
+function useJanusVideoRoomService() {
+  const s = useStore((s) => s.janusVideoRoomService);
+  return useActor(s);
+}
+
 export {
   useStore as usJanusServiceStore,
   useJanusService,
   useJanusSessionService,
   useJanusTextRoomService,
+  useJanusVideoRoomService,
   JanusProvider,
 };

@@ -80,6 +80,7 @@ declare module "janus-gateway" {
     onmessage?: (message: Message, jsep?: JSEP) => void;
     onlocalstream?: (stream: MediaStream) => void;
     onremotestream?: (stream: MediaStream) => void;
+    onlocaltrack?: (track: any, on: boolean) => void;
     ondataopen?: (data: string) => void;
     ondata?: (data: string) => void;
     oncleanup?: () => void;
